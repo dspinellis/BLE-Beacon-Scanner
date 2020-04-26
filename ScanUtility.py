@@ -18,6 +18,13 @@ def hci_toggle_le_scan(sock, enable):
     cmd_pkt = struct.pack("<BB", enable, 0x00)
     bluez.hci_send_cmd(sock, OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE, cmd_pkt)
 
+def unpack_byte(b):
+    """Return b unpacked from a byte value"""
+    if sys.version_info[0] == 3:
+        return struct.unpack("b", bytes([b]))
+    else:
+        return struct.unpack("b", b)
+
 def packetToString(packet):
     """
     Returns the string representation of a raw HCI packet.
@@ -68,8 +75,11 @@ def parse_events(sock, loop_count=100):
                 elif urlprefix == '03':
                     prefix = 'https://'
                 hexUrl = dataString[56:][:-2]
-                url = prefix + hexUrl.decode("hex")
-                rssi, = struct.unpack("b", packet[packetOffset -1])
+                if sys.version_info > (3, 0):
+                    url = prefix + bytes.fromhex(hexUrl).decode("ascii")
+                else:
+                    url = prefix + hexUrl.decode("hex")
+                rssi, = unpack_byte(packet[packetOffset -1])
                 resultsArray = [{"type": type, "url": url}]
                 return resultsArray
 
@@ -104,10 +114,7 @@ def parse_events(sock, loop_count=100):
             scrambledAddress = dataString[14:26]
             fixStructure = iter("".join(reversed([scrambledAddress[i:i+2] for i in range(0, len(scrambledAddress), 2)])))
             macAddress = ':'.join(a+b for a,b in zip(fixStructure, fixStructure))
-            if sys.version_info[0] == 3:
-                rssi, = struct.unpack("b", bytes([packet[packetOffset-1]]))
-            else:
-                rssi, = struct.unpack("b", packet[packetOffset-1])
+            rssi, = unpack_byte(packet[packetOffset -1])
 
             resultsArray = [{"type": type, "uuid": uuid, "major": majorVal, "minor": minorVal, "rssi": rssi, "macAddress": macAddress}]
 
