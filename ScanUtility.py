@@ -101,7 +101,7 @@ def parse_events(sock, loop_count=100):
                 resultsArray = [{"type": type}]
                 return resultsArray
 
-        if dataString[38:46] == '4c000215':
+        elif dataString[38:46] == '4c000215':
             """
             Selects parts of the bluetooth packets.
             """
@@ -120,6 +120,27 @@ def parse_events(sock, loop_count=100):
             rssi, = unpack_byte(packet[packetOffset -1])
 
             resultsArray = [{"type": type, "uuid": uuid, "major": majorVal, "minor": minorVal, "rssi": rssi, "macAddress": macAddress}]
+
+            return resultsArray
+
+        elif dataString[34:36] == '1b' and dataString[42:46] == 'beac':
+            """
+            Selects parts of the bluetooth packets.
+            """
+            type = "AltBeacon"
+            company = dataString[40:42] + dataString[38:40]
+            uuid = dataString[46:54] + "-" + dataString[54:58] + "-" + dataString[58:62] + "-" + dataString[62:66] + "-" + dataString[66:78]
+            sub_id = dataString[78:86]
+            """
+            Organises Mac Address to display properly
+            """
+            scrambledAddress = dataString[14:26]
+            fixStructure = iter("".join(reversed([scrambledAddress[i:i+2] for i in range(0, len(scrambledAddress), 2)])))
+            macAddress = ':'.join(a+b for a,b in zip(fixStructure, fixStructure))
+            rssi, = unpack_byte(packet[packetOffset -1])
+
+            resultsArray = [{"type": type, "uuid": uuid, "company": company,
+                             "subid": sub_id, "rssi": rssi, "macAddress": macAddress}]
 
             return resultsArray
 
